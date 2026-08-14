@@ -5,6 +5,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAudioRecorder, RecordingPresets, AudioModule } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 import { toByteArray } from 'base64-js';
+import { sendLocalAlert, requestNotificationPermission } from '../../utils/notifications';
 
 const WS_BASE = "wss://clad-atlas-griminess.ngrok-free.dev/ws/monitor";
 
@@ -74,9 +75,10 @@ export default function MonitorScreen() {
   };
 
   useEffect(() => {
-    console.log('🔵 Monitor effect running, granted:', permission?.granted);
+  console.log('🔵 Monitor effect running, granted:', permission?.granted);
+  requestNotificationPermission();
 
-    if (!permission?.granted) {
+  if (!permission?.granted) {
       requestPermission();
       return;
     }
@@ -119,16 +121,17 @@ export default function MonitorScreen() {
     };
 
     ws.onmessage = (event) => {
-      if (typeof event.data === 'string') {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.alert) {
-            setLastAlert(`${data.type === 'motion' ? '🚶 Motion' : '👶 Cry'} detected`);
-            setTimeout(() => setLastAlert(null), 4000);
-          }
-        } catch {}
+  if (typeof event.data === 'string') {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.alert) {
+        setLastAlert(`${data.type === 'motion' ? '🚶 Motion' : '👶 Cry'} detected`);
+        setTimeout(() => setLastAlert(null), 4000);
+        sendLocalAlert(data.type, babyName);
       }
-    };
+    } catch {}
+  }
+};
 
     ws.onerror = (err) => {
       console.error('WebSocket error:', err);
